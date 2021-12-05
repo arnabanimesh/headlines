@@ -80,8 +80,8 @@ fn render_footer(ctx: &CtxRef) {
                     .text_style(TextStyle::Monospace),
             );
             ui.add(
-                Hyperlink::new("https://github.com/arnabanimesh")
-                    .text("github/arnabanimesh")
+                Hyperlink::new("https://github.com/arnabanimesh/headlines")
+                    .text("arnabanimesh/headlines")
                     .text_style(TextStyle::Monospace),
             );
             ui.add_space(PADDING10);
