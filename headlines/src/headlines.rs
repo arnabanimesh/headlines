@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::mpsc::{channel, Receiver, SyncSender, TryRecvError},
+    sync::mpsc::{channel, Receiver, SyncSender},
     thread,
 };
 
@@ -162,15 +162,8 @@ impl Headlines {
 
     pub(crate) fn preload_articles(&mut self) {
         if let Some(rx) = &self.news_rx {
-            match rx.try_recv() {
-                Ok(news_data) => {
-                    self.articles.push(news_data);
-                }
-                Err(e) => {
-                    if e == TryRecvError::Empty {
-                        tracing::warn!("Error receiving message: {}", e);
-                    };
-                }
+            if let Ok(news_data) = rx.try_recv() {
+                self.articles.push(news_data);
             }
         }
     }
