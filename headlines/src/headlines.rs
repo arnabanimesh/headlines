@@ -144,6 +144,15 @@ impl Headlines {
                     );
                     if theme_btn.clicked() {
                         self.config.dark_mode = !self.config.dark_mode;
+                        if let Err(e) = confy::store(
+                            "headlines",
+                            HeadlinesConfig {
+                                dark_mode: self.config.dark_mode,
+                                api_key: self.config.api_key.to_string(),
+                            },
+                        ) {
+                            tracing::error!("Failed saving app state: {}", e);
+                        }
                     };
                 });
             });
