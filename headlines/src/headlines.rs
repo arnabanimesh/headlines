@@ -1,4 +1,8 @@
-use std::{borrow::Cow, sync::mpsc::{Receiver, SyncSender, channel, TryRecvError}, thread};
+use std::{
+    borrow::Cow,
+    sync::mpsc::{channel, Receiver, SyncSender, TryRecvError},
+    thread,
+};
 
 use eframe::egui::{
     menu,
@@ -121,10 +125,12 @@ impl Headlines {
                     let refresh_btn = ui.add(Button::new("⟳").text_style(TextStyle::Body));
                     if refresh_btn.clicked() {
                         let api_key = self.config.api_key.to_string();
-                let (mut news_tx, news_rx) = channel();
-                self.news_rx = Some(news_rx);
-                self.articles = vec!();
-                thread::spawn(move || {fetch_news(&api_key,&mut news_tx);});
+                        let (mut news_tx, news_rx) = channel();
+                        self.news_rx = Some(news_rx);
+                        self.articles = vec![];
+                        thread::spawn(move || {
+                            fetch_news(&api_key, &mut news_tx);
+                        });
                     }
                     let theme_btn = ui.add(
                         Button::new({
@@ -152,7 +158,9 @@ impl Headlines {
                     self.articles.push(news_data);
                 }
                 Err(e) => {
-                    if e==TryRecvError::Empty {tracing::warn!("Error receiving message: {}", e);};
+                    if e == TryRecvError::Empty {
+                        tracing::warn!("Error receiving message: {}", e);
+                    };
                 }
             }
         }
@@ -174,7 +182,8 @@ impl Headlines {
                 }
                 self.api_key_initialized = true;
                 if let Some(tx) = &mut self.app_tx {
-                    tx.send(Msg::ApiKeySet(self.config.api_key.to_string())).ok();
+                    tx.send(Msg::ApiKeySet(self.config.api_key.to_string()))
+                        .ok();
                 };
                 tracing::error!("api key set");
             }
@@ -184,7 +193,6 @@ impl Headlines {
         });
     }
 }
-
 
 pub(crate) fn fetch_news(api_key: &str, news_tx: &mut std::sync::mpsc::Sender<NewsCardData>) {
     if let Ok(response) = NewsAPI::new(&api_key).fetch_blocking() {

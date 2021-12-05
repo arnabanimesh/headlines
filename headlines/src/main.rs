@@ -9,8 +9,11 @@ use eframe::{
     epi::{App, Frame, IconData, Storage},
     run_native, NativeOptions,
 };
-use headlines::{Headlines, Msg, DPI, PADDING10, PADDING5, fetch_news};
-use std::{sync::mpsc::{channel, sync_channel}, thread};
+use headlines::{fetch_news, Headlines, Msg, DPI, PADDING10, PADDING5};
+use std::{
+    sync::mpsc::{channel, sync_channel},
+    thread,
+};
 
 impl App for Headlines {
     fn setup(&mut self, ctx: &CtxRef, _frame: &mut Frame<'_>, _storage: Option<&dyn Storage>) {
@@ -22,14 +25,13 @@ impl App for Headlines {
         thread::spawn(move || {
             if !api_key.is_empty() {
                 fetch_news(&api_key, &mut news_tx);
-            }
-            else {
+            } else {
                 loop {
                     match app_rx.recv() {
                         Ok(Msg::ApiKeySet(api_key)) => {
                             fetch_news(&api_key, &mut news_tx);
                         }
-                        Err(e)=> {
+                        Err(e) => {
                             tracing::warn!("Failed receiving msg: {}", e);
                         }
                     }
