@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::mpsc::{channel, Receiver, SyncSender},
+    sync::mpsc::{channel, Receiver, SyncSender, TryRecvError},
     thread,
 };
 
@@ -13,11 +13,11 @@ use eframe::egui::{
 use newsapi::NewsAPI;
 use serde::{Deserialize, Serialize};
 
-pub(crate) const DPI: f32 = 1.25;
-pub(crate) const PADDING5: f32 = 5.0 / DPI;
-pub(crate) const PADDING10: f32 = 10.0 / DPI;
-const HEADINGFONTSIZE: f32 = 35.0 / DPI;
-const BODYFONTSIZE: f32 = 20.0 / DPI;
+pub(crate) const SCALEFACTOR: f32 = 1.25;
+pub(crate) const PADDING5: f32 = 5.0 / SCALEFACTOR;
+pub(crate) const PADDING10: f32 = 10.0 / SCALEFACTOR;
+const HEADINGFONTSIZE: f32 = 35.0 / SCALEFACTOR;
+const BODYFONTSIZE: f32 = 20.0 / SCALEFACTOR;
 const WHITE: Color32 = Color32::from_rgb(255, 255, 255);
 const BLACK: Color32 = Color32::from_rgb(0, 0, 0);
 const CYAN: Color32 = Color32::from_rgb(0, 255, 255);
@@ -47,6 +47,7 @@ pub(crate) struct Headlines {
     pub(crate) api_key_initialized: bool,
     pub(crate) news_rx: Option<Receiver<NewsCardData>>,
     pub(crate) app_tx: Option<SyncSender<Msg>>,
+    pub(crate) app_rx: Option<Receiver<Msg>>,
 }
 pub(crate) struct NewsCardData {
     pub(crate) title: String,
@@ -63,6 +64,7 @@ impl Headlines {
             config,
             news_rx: None,
             app_tx: None,
+            app_rx: None,
         }
     }
     pub(crate) fn configure_fonts(&self, ctx: &CtxRef) {
@@ -162,8 +164,13 @@ impl Headlines {
 
     pub(crate) fn preload_articles(&mut self) {
         if let Some(rx) = &self.news_rx {
-            if let Ok(news_data) = rx.try_recv() {
-                self.articles.push(news_data);
+            match rx.try_recv() {
+                Ok(news_data) => self.articles.push(news_data),
+                Err(e) => {
+                    if let TryRecvError::Disconnected = e {
+                        self.app_rx = None;
+                    }
+                }
             }
         }
     }

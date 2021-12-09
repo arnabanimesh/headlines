@@ -9,7 +9,7 @@ use eframe::{
     epi::{App, Frame, IconData, Storage},
     run_native, NativeOptions,
 };
-use headlines::{fetch_news, Headlines, Msg, DPI, PADDING10, PADDING5};
+use headlines::{fetch_news, Headlines, Msg, SCALEFACTOR, PADDING10, PADDING5};
 use std::{
     sync::mpsc::{channel, sync_channel},
     thread,
@@ -94,7 +94,7 @@ fn render_header(ui: &mut Ui) {
         ui.heading("headlines");
     });
     ui.add_space(PADDING5);
-    let sep = Separator::default().spacing(20. / DPI);
+    let sep = Separator::default().spacing(20. / SCALEFACTOR);
     ui.add(sep);
 }
 
@@ -116,7 +116,7 @@ fn main() {
     tracing_subscriber::fmt::init();
     let app = Headlines::new();
     let mut win_option = NativeOptions::default();
-    win_option.initial_window_size = Some(Vec2::new(540. / DPI, 720. / DPI));
+    win_option.initial_window_size = Some(Vec2::new(540. / SCALEFACTOR, 720. / SCALEFACTOR));
     win_option.icon_data = icon_create();
     run_native(Box::new(app), win_option)
 }
