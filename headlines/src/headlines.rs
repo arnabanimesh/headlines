@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::mpsc::{channel, Receiver, SyncSender, TryRecvError},
-    thread,
+    sync::mpsc::{Receiver, SyncSender, TryRecvError},
 };
 
 use eframe::egui::{
@@ -13,9 +12,9 @@ use eframe::egui::{
 use newsapi::NewsAPI;
 use serde::{Deserialize, Serialize};
 
-pub(crate) const SCALEFACTOR: f32 = 1.25;
-pub(crate) const PADDING5: f32 = 5.0 / SCALEFACTOR;
-pub(crate) const PADDING10: f32 = 10.0 / SCALEFACTOR;
+pub const SCALEFACTOR: f32 = 1.25;
+pub const PADDING5: f32 = 5.0 / SCALEFACTOR;
+pub const PADDING10: f32 = 10.0 / SCALEFACTOR;
 const HEADINGFONTSIZE: f32 = 35.0 / SCALEFACTOR;
 const BODYFONTSIZE: f32 = 20.0 / SCALEFACTOR;
 const WHITE: Color32 = Color32::from_rgb(255, 255, 255);
@@ -23,14 +22,16 @@ const BLACK: Color32 = Color32::from_rgb(0, 0, 0);
 const CYAN: Color32 = Color32::from_rgb(0, 255, 255);
 const RED: Color32 = Color32::from_rgb(255, 0, 0);
 
-pub(crate) enum Msg {
+pub enum Msg {
     ApiKeySet(String),
+    Refresh(String),
+    Theme,
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct HeadlinesConfig {
-    pub(crate) dark_mode: bool,
-    pub(crate) api_key: String,
+pub struct HeadlinesConfig {
+    pub dark_mode: bool,
+    pub api_key: String,
 }
 
 impl Default for HeadlinesConfig {
@@ -41,33 +42,32 @@ impl Default for HeadlinesConfig {
         }
     }
 }
-pub(crate) struct Headlines {
-    pub(crate) articles: Vec<NewsCardData>,
-    pub(crate) config: HeadlinesConfig,
-    pub(crate) api_key_initialized: bool,
-    pub(crate) news_rx: Option<Receiver<NewsCardData>>,
-    pub(crate) app_tx: Option<SyncSender<Msg>>,
-    pub(crate) app_rx: Option<Receiver<Msg>>,
+pub struct Headlines {
+    pub articles: Vec<NewsCardData>,
+    pub config: HeadlinesConfig,
+    pub api_key_initialized: bool,
+    pub news_rx: Option<Receiver<NewsCardData>>,
+    pub app_tx: Option<SyncSender<Msg>>,
+    pub app_rx: Option<Receiver<Msg>>,
 }
-pub(crate) struct NewsCardData {
-    pub(crate) title: String,
-    pub(crate) desc: String,
-    pub(crate) url: String,
+pub struct NewsCardData {
+    pub title: String,
+    pub desc: String,
+    pub url: String,
 }
 
 impl Headlines {
-    pub(crate) fn new() -> Headlines {
-        let config: HeadlinesConfig = confy::load("headlines").unwrap_or_default();
+    pub fn new() -> Headlines {
         Headlines {
-            api_key_initialized: !config.api_key.is_empty(),
+            api_key_initialized: Default::default(),
             articles: vec![],
-            config,
+            config: Default::default(),
             news_rx: None,
             app_tx: None,
             app_rx: None,
         }
     }
-    pub(crate) fn configure_fonts(&self, ctx: &CtxRef) {
+    pub fn configure_fonts(&self, ctx: &CtxRef) {
         let mut font_def = FontDefinitions::default();
         font_def.font_data.insert(
             "MesloLGS".to_string(),
@@ -87,7 +87,7 @@ impl Headlines {
             .insert(0, "MesloLGS".to_string());
         ctx.set_fonts(font_def);
     }
-    pub(crate) fn render_news_cards(&self, ui: &mut eframe::egui::Ui) {
+    pub fn render_news_cards(&self, ui: &mut eframe::egui::Ui) {
         for a in &self.articles {
             ui.add_space(PADDING5);
             let title = format!("▶ {}", a.title);
@@ -112,7 +112,7 @@ impl Headlines {
             ui.add(Separator::default());
         }
     }
-    pub(crate) fn render_top_panel(&mut self, ctx: &CtxRef, frame: &mut eframe::epi::Frame<'_>) {
+    pub fn render_top_panel(&mut self, ctx: &CtxRef, frame: &mut eframe::epi::Frame<'_>) {
         TopBottomPanel::top("top panel").show(ctx, |ui| {
             ui.add_space(PADDING10);
             menu::bar(ui, |ui| {
@@ -120,19 +120,18 @@ impl Headlines {
                     ui.add(Label::new("📚").text_style(TextStyle::Heading));
                 });
                 ui.with_layout(Layout::right_to_left(), |ui| {
-                    let close_btn = ui.add(Button::new("❌").text_style(TextStyle::Body));
-                    if close_btn.clicked() {
-                        frame.quit();
+                    if !cfg!(target_arch = "wasm32") {
+                        let close_btn = ui.add(Button::new("❌").text_style(TextStyle::Body));
+                        if close_btn.clicked() {
+                            frame.quit();
+                        }
                     }
                     let refresh_btn = ui.add(Button::new("⟳").text_style(TextStyle::Body));
                     if refresh_btn.clicked() {
-                        let api_key = self.config.api_key.to_string();
-                        let (mut news_tx, news_rx) = channel();
-                        self.news_rx = Some(news_rx);
-                        self.articles = vec![];
-                        thread::spawn(move || {
-                            fetch_news(&api_key, &mut news_tx);
-                        });
+                        self.articles.clear();
+                        if let Some(tx) = &self.app_tx {
+                            tx.send(Msg::Refresh(self.config.api_key.to_string())).ok();
+                        }
                     }
                     let theme_btn = ui.add(
                         Button::new({
@@ -146,15 +145,6 @@ impl Headlines {
                     );
                     if theme_btn.clicked() {
                         self.config.dark_mode = !self.config.dark_mode;
-                        if let Err(e) = confy::store(
-                            "headlines",
-                            HeadlinesConfig {
-                                dark_mode: self.config.dark_mode,
-                                api_key: self.config.api_key.to_string(),
-                            },
-                        ) {
-                            tracing::error!("Failed saving app state: {}", e);
-                        }
                     };
                 });
             });
@@ -162,7 +152,7 @@ impl Headlines {
         });
     }
 
-    pub(crate) fn preload_articles(&mut self) {
+    pub fn preload_articles(&mut self) {
         if let Some(rx) = &self.news_rx {
             match rx.try_recv() {
                 Ok(news_data) => self.articles.push(news_data),
@@ -175,20 +165,11 @@ impl Headlines {
         }
     }
 
-    pub(crate) fn render_config(&mut self, ctx: &CtxRef) {
+    pub fn render_config(&mut self, ctx: &CtxRef) {
         Window::new("Configuration").show(ctx, |ui| {
             ui.label("Enter your API_KEY for newsapi.org");
             let text_input = ui.text_edit_singleline(&mut self.config.api_key);
             if text_input.lost_focus() && ui.input().key_pressed(eframe::egui::Key::Enter) {
-                if let Err(e) = confy::store(
-                    "headlines",
-                    HeadlinesConfig {
-                        dark_mode: self.config.dark_mode,
-                        api_key: self.config.api_key.to_string(),
-                    },
-                ) {
-                    tracing::error!("Failed saving app state: {}", e);
-                }
                 self.api_key_initialized = true;
                 if let Some(tx) = &mut self.app_tx {
                     tx.send(Msg::ApiKeySet(self.config.api_key.to_string()))
@@ -203,8 +184,26 @@ impl Headlines {
     }
 }
 
-pub(crate) fn fetch_news(api_key: &str, news_tx: &mut std::sync::mpsc::Sender<NewsCardData>) {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fetch_news(api_key: &str, news_tx: &mut std::sync::mpsc::Sender<NewsCardData>) {
     if let Ok(response) = NewsAPI::new(&api_key).fetch_blocking() {
+        let resp_articles = response.articles();
+        for a in resp_articles.iter() {
+            let news = NewsCardData {
+                title: a.title().to_string(),
+                url: a.url().to_string(),
+                desc: a.desc().map(|s| s.to_string()).unwrap_or("...".to_string()),
+            };
+            if let Err(e) = news_tx.send(news) {
+                tracing::error!("Error sending news data: {}", e);
+            };
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub async fn fetch_web(api_key: String, news_tx: std::sync::mpsc::Sender<NewsCardData>) {
+    if let Ok(response) = NewsAPI::new(&api_key).fetch_web().await {
         let resp_articles = response.articles();
         for a in resp_articles.iter() {
             let news = NewsCardData {

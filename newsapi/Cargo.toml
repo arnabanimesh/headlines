@@ -11,5 +11,8 @@ serde = { version = "1.0.130", features = ["derive"] }
 thiserror = "1.0.30"
 url = "2.2.2"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwasm = "0.3.1"
+
 [features]
 blocking = []

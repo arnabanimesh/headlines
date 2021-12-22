@@ -13,6 +13,12 @@ pub enum NewsApiError {
     UrlParsing(#[from] url::ParseError),
     #[error("Request Failed {0}")]
     BadRequest(&'static str),
+    #[cfg(target_arch = "wasm32")]
+    #[error("Failed fetching articles")]
+    WasmRequestFailed(#[from] reqwasm::Error),
+    #[cfg(target_arch = "wasm32")]
+    #[error("Failed parsing response into json")]
+    WasmArticleParseFailed(reqwasm::Error),
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,6 +111,7 @@ impl NewsAPI {
         Ok(url.to_string())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn fetch(&self) -> Result<NewsApiResponse, NewsApiError> {
         let url = self.prepare_url()?;
         let response = reqwest::Client::new()
@@ -120,6 +127,7 @@ impl NewsAPI {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg(feature = "blocking")]
     pub fn fetch_blocking(&self) -> Result<NewsApiResponse, NewsApiError> {
         let url = self.prepare_url()?;
@@ -128,6 +136,21 @@ impl NewsAPI {
             .header("Authorization", &self.api_key)
             .send()?
             .json::<NewsApiResponse>()?;
+        match response.status.as_str() {
+            "ok" => return Ok(response),
+            _ => return Err(map_response_err(response.code)),
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn fetch_web(&self) -> Result<NewsApiResponse, NewsApiError> {
+        let url = self.prepare_url()?;
+        let response = reqwasm::http::Request::get(&url)
+            .header("Authorization", &self.api_key)
+            .send()
+            .await?
+            .json::<NewsApiResponse>()
+            .await?;
         match response.status.as_str() {
             "ok" => return Ok(response),
             _ => return Err(map_response_err(response.code)),

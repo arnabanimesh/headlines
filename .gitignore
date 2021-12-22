@@ -12,3 +12,10 @@ target/
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+# VS Code launch configuration files
+.vscode
+
+# Generated artifacts in webapp
+webapp/headlines_bg.wasm
+webapp/headlines.js
