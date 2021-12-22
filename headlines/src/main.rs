@@ -1,3 +1,5 @@
+#![windows_subsystem="windows"]
+
 use eframe::{epi::egui::Vec2, run_native, NativeOptions};
 
 use headlines::{icon_create, Headlines, SCALEFACTOR};
