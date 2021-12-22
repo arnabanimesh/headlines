@@ -173,6 +173,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 #[wasm_bindgen]
 pub fn main_web(canvas_id: &str) {
     let headlines = Headlines::new();
-    tracing_wasm::set_as_global_default();
+    // Uncomment this line while debugging
+    // tracing_wasm::set_as_global_default();
     eframe::start_web(canvas_id, Box::new(headlines)).expect("Could not start web app");
 }
