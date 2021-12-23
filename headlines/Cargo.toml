@@ -21,4 +21,7 @@ crate-type = ["cdylib", "rlib"]
 [target.'cfg(target_arch="wasm32")'.dependencies]
 tracing-wasm = "0.2.1"
 
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.12"
+
 [features]
