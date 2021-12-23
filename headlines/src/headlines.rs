@@ -25,7 +25,6 @@ const RED: Color32 = Color32::from_rgb(255, 0, 0);
 pub enum Msg {
     ApiKeySet(String),
     Refresh(String),
-    Theme,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -71,7 +70,7 @@ impl Headlines {
         let mut font_def = FontDefinitions::default();
         font_def.font_data.insert(
             "MesloLGS".to_string(),
-            Cow::Borrowed(include_bytes!("../../MesloLGS NF Regular.ttf")),
+            Cow::Borrowed(include_bytes!("../../assets/MesloLGS NF Regular.ttf")),
         );
         font_def.family_and_size.insert(
             TextStyle::Heading,

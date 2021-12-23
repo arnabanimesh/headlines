@@ -50,7 +50,6 @@ impl App for Headlines {
                     Ok(Msg::Refresh(api_key)) => {
                         fetch_news(&api_key, &mut news_tx);
                     }
-                    Ok(Msg::Theme) => {}
                     Err(e) => {
                         tracing::warn!("Failed receiving msg: {}", e);
                     }
@@ -72,7 +71,6 @@ impl App for Headlines {
             Ok(Msg::Refresh(api_key)) => {
                 wasm_bindgen_futures::spawn_local(fetch_web(api_key.clone(), news_tx.clone()));
             }
-            Ok(Msg::Theme) => {}
             Err(e) => {
                 tracing::error!("Failed receiving msg: {}", e);
             }
@@ -153,7 +151,7 @@ fn render_header(ui: &mut Ui) {
 }
 
 pub fn icon_create() -> Option<IconData> {
-    let bytes = include_bytes!("../../newspaper.png");
+    let bytes = include_bytes!("../../assets/newspaper.png");
     let image_buffer = image::load_from_memory(bytes).ok().unwrap();
     let img = image_buffer.to_rgba8();
     let size = (img.width() as u32, img.height() as u32);

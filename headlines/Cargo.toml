@@ -18,6 +18,10 @@ wasm-bindgen-futures = "0.4.28"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "headlines-gui"
+path = "src/main.rs"
+
 [target.'cfg(target_arch="wasm32")'.dependencies]
 tracing-wasm = "0.2.1"
 
